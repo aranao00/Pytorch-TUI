@@ -32,6 +32,7 @@ class Architecture_Database():#아키텍처별로 코드 따로 저장하게 나
         #{name:[architecture, code list]}
         self.models=None #nn.Module. main에 반환할 모델 인스턴스
         self.modelcode=None #String. 로드할 모델 가중치 명
+        self.module=None #load할 module_architectures 모듈의 내용
 
         self.load_db() #아키텍처 목록, 가중치 파일 목록 로드
 
@@ -70,7 +71,9 @@ class Architecture_Database():#아키텍처별로 코드 따로 저장하게 나
             self.code_dictionary = json.load(file)
         with open('architectures.json', 'r') as file:
             self.architecture_dictionary = json.load(file)
-        return self.code_dictionary, self.architecture_dictionary
+        with open('model_architectures.py', 'r') as file:#모델 코드 저장
+            file.read(self.module)
+        return 0
 
     def load_mod(self, code):#Done. code:로드할 가중치 파일 명
         #instance 로드.
@@ -81,6 +84,12 @@ class Architecture_Database():#아키텍처별로 코드 따로 저장하게 나
             return 15
         
         model=torch.load(f"{code}.pth")
+        return model
+
+    def load_arc(self, modelname, params):#modelcode:불러들일 가중치 이름, modelname:불러들일 모델 이름
+        loader=globals()[modelname]
+        #self.params=input(f"model parameters({paramcaption}):")
+        model=loader(params)
         return model
 
 '''    def load_architecture(self, layers, forward_func):
@@ -125,6 +134,8 @@ class model_control():
 
     def modify_forward(self):
         #모델의 forward 수정.
+        #프로젝트 내의 텐서 딕셔너리를 만들고, 그 내부에 시작과 끝을 만든다.
+        #********그리고 텐서 각 모델이 어느 딕셔너리에서 어느 딕셔너리로 갈지를 지정해서 forward 함수를 쉽게 구성할 수 있다!
         return 0
 
 
@@ -136,62 +147,66 @@ class main_ui():
         self.db=Architecture_Database()#load database
         self.visualize=False#Default
         self.cuda=torch.cuda.is_available()#Default
-
-    def run(self):
+        self.quit=False
+        self.control=model_control()
+        self.default_optim='Adam'
+        self.default_lr=0.0001
+        self.default_loss='MSEloss'
 
         print('::: easy pytorch :::\n')
 
-        self.db.code_dictionary()
-        print(' model instance loaded.\n\n')
+        while self.quit:
+            self.run()
+
+    def run(self):
+        #module list나 module dict를 직접 지원할 수 있도록 추후 업데이트 해야 할 것.
+
 
         print('what do you want to do?\n')
-        print('1:load model   2:new architecture    3:option\n')
-        user=input()
+        print('1:load model   2:new architecture    3:option   Q:quit\n')
+        user=int(input())
         print('\n')
 
-        if input==1:
+        if user=='Q':
+            self.quit=True
+            return 0
+        
+        if user==1:
             print(f'custom model list:{self.db.code_dictionary}\n')
-            user=input()
+            user=int(input())
             print('\n')
+            print('What do you want to do with this model?\n1:edit the model    2:train the model\n')
+            user=int(input())
+            print('\n')
+            if user==1:
+                #모델 수정. while 문으로 돌리기. 끝나면 save할지 물어보기.
+                return 0 ##################################################
+            if user==2:#학습시작.
+                self.training()
+                self.save()
+            return 0
 
-        if input==2:
+        if user==2:
+            print('::: append models :::\n')
+            print('enter the name of model you want to append.\n')
+            print('enter 0 when you\'ve done.\n')
+            while True:
+                layername=input('Layer name:')
+                if layername==0:
+                    break
+                user=input('Model name:')
+                if user==0:
+                    break
+                self.models[layername]=self.new_model(user)
 
-        if input==3:
+
+        if user==3:
             self.option()
             return 0
 
-
-    def setmod(self, modelcode=None, modelname=None, versioncode=None):
-        if modelname==None:
-            self.modelname=input('model architecture name:')
-        else:
-            self.modelname=modelname
-            print(f'model architecture name:{modelname}')
-
-        if modelcode==None:
-            self.modelcode=input('model code name:')
-        else:
-            self.modelcode=modelcode
-            print(f'model code name:{modelcode}')
-
-        loader=globals()[self.modelname]
-        self.params=input(f"model parameters({paramcaption}):")
-        self.model=loader(self.params)
-        if versioncode==None:
-            self.modcode=input('model version code:')
-        else:
-            self.modcode=versioncode
-            print(f'model version code:{versioncode}')
-        self.model.load_state_dict(torch.load(f"{self.modcode}.pth"))
-        return self.model
-
-    def set_option(self, optname, lrset=0.0001):
-        loader=getattr('nn', optname)
-        self.optim=loader(self.model.parameters(), lrset)
-        return 0
-
     def training(self):
         return 0
+
     def start(self):
         self.setmod()
         self.set_option()
