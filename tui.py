@@ -96,12 +96,24 @@ class model_control():
     def __init__(self, code):
         self.modelcode=code
         self.lines=self.modelcode.split('\n')
-        self.start_class={}
+        self.forward_idx={}#각 클래스의 이름과 forward 위치
         self.class_idx={}#각 클래스의 이름과 시작 위치
-        self.class_pattern = r'class\s+(\w+)\(nn\.Module\):'
+        self.class_pattern=r'class\s+([A-Za-z0-9_]+)\(([A-Za-z0-9._]+)\):'
+        self.layer_pattern=r'\s+self\.([A-Za-z0-9_]+)=([A-Za-z0-9_\.]+)\(([A-Za-z0-9_,=\s]+)\)'
+        self.init_pattern=r'\s+def\s+__init__\(self,\s+([A-Za-z0-9_,=\s]+)\):'
         self.instant_lines=[]
-        self.search_class()
+        self.search()
     
+    def search(self):#Done.
+        idx = [index for index, code in enumerate(self.lines) if code.startswith('class ')]
+        fidx = [index for index, code in enumerate(self.lines) if code.startswith('\tdef forward')]
+        class_num=len(idx)
+        for i in range(class_num):
+            match = re.match(self.class_pattern, self.lines[idx[i]])
+            class_name = match.group(1)
+            self.class_idx[class_name]=idx[i]
+            self.forward_idx[class_name]=fidx[i]
+
     def search_class(self):#Done.
         #이후 __init__ 내부에서 self.{name}=nn.{name}이나 custom.{name}을 통해 내부 구조를 정리한다.
         #forward 함수에서는 텐서와 레이어 단위를 기본적으로 적용하며
@@ -110,13 +122,20 @@ class model_control():
         class_num=len(idx)
         for i in range(class_num):
             match = re.match(self.class_pattern, self.lines[idx[i]])
-            print(match)
             class_name = match.group(1)
             self.class_idx[class_name]=idx[i]
-        #self.start_class[class_name]=
 
+    def search_forward(self):#Done.
+        idx = [index for index, code in enumerate(self.lines) if code.startswith('\tdef forward')]
+        class_num=len(idx)
+        for i in range(class_num):
+            match = re.match(self.class_pattern, self.lines[idx[i]])
+            class_name=match.group(1)
+            self.forward_idx[class_name]=idx[i]
+        
     def new_architecture(self, name):#Done. 기본으로 텍스트모델인지, 이미지 모델인지 설정하여 틀 만들 수 있게.
         lens=len(self.lines)
+
         self.lines.append(f"class {name}(nn.Module):")
         self.lines.append('\tdef __init__(self):')
         self.lines.append(f"\t\tsuper({name}, self).__init__()")
@@ -125,6 +144,7 @@ class model_control():
         self.lines.append('\t\treturn data')
 
         self.class_idx[name]=lens
+        self.forward_idx[name]=lens+3
         self.search_class()
         return 0
 
@@ -137,10 +157,13 @@ class model_control():
         self.lines.insert(self.class_idx[tgtmod]+3+idx, arc)
         return 0
     
-    def delete_layer(self, tgtmod, layeridx):
-        
+    def delete_layer(self, tgtmod, layeridx):#Done.
+        if self.class_idx[tgtmod]+3+layeridx==self.forward_idx[tgtmod]:
+            return 19
+        del self.lines[self.class_idx[tgtmod]+3+layeridx]
+        return 0
 
-    def modify_layer(self, tgtmod, tgtidx, layername, arc, params):
+    def modify_layer(self, tgtmod, tgtidx, layername, arc, params):#Done.
         if not arc in self.class_idx:
             arc='nn.'+arc
         arc=arc+f"({params})"
@@ -148,7 +171,7 @@ class model_control():
         self.lines[self.class_idx[tgtmod]+3+tgtidx]= arc
         return 0
     
-    def modify_init(self, name, params):#일단 작동은 함.
+    def modify_init(self, name, params):#Done.
         self.lines[self.class_idx[name]+1]=f"\tdef __init__(self, {params}):"
         return 0
 
@@ -158,11 +181,31 @@ class model_control():
         #********그리고 텐서 각 모델이 어느 딕셔너리에서 어느 딕셔너리로 갈지를 지정해서 forward 함수를 쉽게 구성할 수 있다!
         return 0
 
-    def load_architecture(self, tgtmodel):
-        self.lines[self.class_idx[tgtmodel]]
-        return ''
+    def load_architecture(self, tgtmodel):#Done.
+        tgtinit=self.class_idx[tgtmodel]+1
+        tgtlayer=tgtinit+2
+        tgtforward=self.forward_idx[tgtmodel]
+        initparam=None
+        layername=[]
+        arcname=[]
+        params=[]
+        match=re.match(self.init_pattern, self.lines[tgtinit])
+        if not match==None:
+            initparam=match.group(1)
+        for i in range(tgtlayer, tgtforward):#다음 클래스 시작 전까지의 부분을 받아온다
+        #클래스 명과 하이퍼 파라미터, 레이어 명과 아키텍처명, 각각의 파라미터
+        #forward에 있는건 load_forward로 하자 ...
+            match = re.match(self.layer_pattern, self.lines[i])
+            if not match==None:
+                layername.append(match.group(1))
+                arcname.append(match.group(2))
+                params.append(match.group(3))
+        return layername, arcname, params, initparam
 
-    def save(self):
+    def move_layer(self):
+        return 0
+
+    def save(self):#Done.
         joined_string = "\n".join(self.lines)
         file_path = "model_architectures.py"
         with open(file_path, "w") as file:
@@ -210,14 +253,14 @@ class main_ui():
         
         if user=='1':
             
-            print('Choose model you want to edit:\n')
+            print(f'Choose model you want to edit:{self.control.class_idx.keys()}\n')
             if len(self.control.class_idx)==0:
                 print('No custom architecture exists.')
                 return 0
             
             tgtmodel=input('user:')
             while True:
-                print(self.control.load_architecture(tgtmodel)+'\n')
+                self.load_architecture(tgtmodel)
                 self.edit_architecture(tgtmodel)
                 self.control.save()
                 if self.quit:
@@ -235,8 +278,8 @@ class main_ui():
 
     def edit_architecture(self, tgtmodel):
         print('What do you want to do?\n\n')
-        print('1:add layer    2:replace layer\n')
-        print('3:delete layer 4:edit hyper parameters\nq:quit\n')
+        print('1:add layer       2:replace layer')
+        print('3:delete layer    4:edit hyper parameters\nq:quit\n')
         user=input('user:')
         if user=='q':
             self.quit=True
@@ -255,13 +298,23 @@ class main_ui():
             params=input('Parameters:')
             self.control.modify_layer(tgtmodel, layer, newname, arc, params)
             return 0
+        if user=='4':
+            params=input('Parameters:')
+            self.control.modify_init(tgtmodel, params)
         return 0
         
     def edit_loop(self):
         return 0
 
-    def load_architecture(self):#아키텍처를 불러온다. 수정하기 위함. 직접적으로는 model_control에서 수정.
+    def load_architecture(self, tgtmodel):#아키텍처를 불러온다. 수정하기 위함. 직접적으로는 model_control에서 수정.
         #이 함수는 그냥 유저가 보기 쉽게만 하는 용도
+        self.control.search()
+        layername, arcname, params, initparam=self.control.load_architecture(tgtmodel)
+        layerlen=len(layername)
+        print(f'\ninit params : {initparam}\n')
+        for i in range(layerlen):
+            print(f'{layername[i]}({i}) : {arcname[i]} ({params[i]})')
+        print('\n')
         return 0
 
     def load_model(self):#모델 인스턴스를 불러온다. 학습 혹은 테스트 위함.
@@ -288,17 +341,10 @@ class main_ui():
     def load_loop(self):#학습 루프를 불러온다. 학습 혹은 테스트 위함.
         return 0
 
-    def make_new_arch(self):#새 아키텍처를 만든다.
-        print('::: append models :::\n')
+    def make_new_arch(self):#Done. 새 아키텍처를 만든다.
         print('enter the name of model you want to append.\n')
-        print('enter 0 when you\'ve done.\n')
-        while user != '0':
-            user=input('Layer name:')
-            if user=='0':
-                break
-            modelname=input('Model name:')
-            params=input('Parameters(0:Default):')
-            self.models[user]=self.new_model(modelname, params)
+        user=input('user:')
+        self.control.new_architecture(user)
 
     def make_new_loop(self):#새 학습 루프를 만든다.
         return 0
