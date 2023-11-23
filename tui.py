@@ -254,7 +254,7 @@ class main_ui():
             self.quit=True
             return 0
         
-        if user=='1':
+        if user=='1':#Done. 아키텍처 수정
             
             print(f'{self.text["u1_1"]}:{self.control.class_idx.keys()}\n')
             if len(self.control.class_idx)==0:
@@ -262,6 +262,9 @@ class main_ui():
                 return 0
             
             tgtmodel=input('user:')
+            if not tgtmodel in self.control.class_idx:
+                print(self.text['u1_3'])
+                return 12
             while True:
                 self.load_architecture(tgtmodel)
                 self.edit_architecture(tgtmodel)
@@ -271,15 +274,15 @@ class main_ui():
                     break
 
 
-        if user=='2':
+        if user=='2':#Done. 아키텍처 생성
             self.make_new_arch()
 
-        if user=='5':#Done.
+        if user=='5':#Done. 옵션 설정
             self.option_setting()
             return 0
         return 0
 
-    def edit_architecture(self, tgtmodel):
+    def edit_architecture(self, tgtmodel):#Done. forward도 추가할 수 있으면 추가.
         print(self.text['edit0_1'])
         print(self.text['edit0_2'])
         print(self.text['edit0_3'])
@@ -288,29 +291,52 @@ class main_ui():
         if user=='q':
             self.quit=True
             return 0
-        if user=='1':
+        if user=='1':#레이어 추가
             idx=int(input(self.text['edit1_1']))
+            if idx>self.control.forward_idx[tgtmodel]-self.control.class_idx[tgtmodel]-3:
+                print(self.text['edit1_5'])
+                print(self.text['edit1_6'])
+                return 21
             lname=input(self.text['edit1_2'])
             arc=input(self.text['edit1_3'])
             params=input(self.text['edit1_4'])
             self.control.add_layer(tgtmodel, lname, idx, arc, params)
             return 0
-        if user=='2':
+        if user=='2':#레이어 수정
+            if self.control.forward_idx[tgtmodel]-self.control.class_idx[tgtmodel]==3:
+                print(self.text['edit2_5'])
+                return 21
             layer=int(input(self.text['edit2_1']))
+            if layer>self.control.forward_idx[tgtmodel]-self.control.class_idx[tgtmodel]-4:
+                print(self.text['edit1_5'])
+                return 21
             newname=input(self.text['edit2_2'])
             arc=input(self.text['edit2_3'])
             params=input(self.text['edit2_4'])
             self.control.modify_layer(tgtmodel, layer, newname, arc, params)
             return 0
-        if user=='4':
+        if user=='3':#레이어 제거
+            if self.control.forward_idx[tgtmodel]-self.control.class_idx[tgtmodel]==3:
+                print(self.text['edit3_2'])
+                return 25
+            idx=int(input(self.text['edit3_1']))
+            
+            if idx>self.control.forward_idx[tgtmodel]-self.control.class_idx[tgtmodel]-4:
+                print(self.text['edit3_3'])
+                return 25
+            
+            self.control.delete_layer(tgtmodel, idx)
+            return 0
+        if user=='4':#초기화 파라미터
             params=input(self.text['edit4_1'])
             self.control.modify_init(tgtmodel, params)
+            return 0
         return 0
         
     def edit_loop(self):
         return 0
 
-    def load_architecture(self, tgtmodel):#아키텍처를 불러온다. 수정하기 위함. 직접적으로는 model_control에서 수정.
+    def load_architecture(self, tgtmodel):#Done. 아키텍처를 불러온다. 수정하기 위함. 직접적으로는 model_control에서 수정.
         #이 함수는 그냥 유저가 보기 쉽게만 하는 용도
         self.control.search()
         layername, arcname, params, initparam=self.control.load_architecture(tgtmodel)
@@ -448,6 +474,7 @@ texts={ 'en':{
             'run3':     '5:option                q:quit\n',
             'u1_1':     'Choose model you want to edit',
             'u1_2':     'No custom architecture exists.',
+            'u1_3':     'There is no model named : ',
             'edit0_1':  'What do you want to do?\n\n',
             'edit0_2':  '1:add layer       2:replace layer',
             'edit0_3':  '3:delete layer    4:edit hyper parameters\nq:quit\n',
@@ -455,10 +482,16 @@ texts={ 'en':{
             'edit1_2':  'Layer name:',
             'edit1_3':  'Model:',
             'edit1_4':  'Parameters:',
+            'edit1_5':  'Index out of range. Please enter an index of less than or equal to the number of layers.',
+            'edit1_6':  'Enter 0 if there is no layer.',
             'edit2_1':  'Index of the layer you want to change:',
             'edit2_2':  'New layer name:',
             'edit2_3':  'Model:',
             'edit2_4':  'Parameters:',
+            'edit2_5':  'There is no layer to edit.',
+            'edit3_1':  'Index of the layer you want to delete:',
+            'edit3_2':  'There is no leyaer to delete.',
+            'edit3_3':  'Index out of range. Please enter an index of less than the number of layers.',
             'edit4_1':  'Parameters:',
             'loar1':    'Architecture name',
             'loar2':    'init params',
@@ -491,6 +524,7 @@ texts={ 'en':{
             'run3':     '5:옵션 설정           q:종료\n',
             'u1_1':     '수정할 모델을 선택하십시오',
             'u1_2':     '기존에 작성한 모델이 없습니다.',
+            'u1_3':     '해당하는 모델이 없습니다 : ',
             'edit0_1':  '무엇을 하고 싶으신가요?\n\n',
             'edit0_2':  '1:레이어 추가       2:레이어 수정',
             'edit0_3':  '3:레이어 삭제       4:레이어 하이퍼 파라미터 수정\nq:나가기\n',
@@ -498,10 +532,16 @@ texts={ 'en':{
             'edit1_2':  '레이어 이름:',
             'edit1_3':  '추가할 모델:',
             'edit1_4':  '파라미터:',
+            'edit1_5':  '인덱스가 범위를 벗어났습니다. 존재하는 레이어의 수 이하의 인덱스를 입력해주십시오.',
+            'edit1_6':  '레이어가 존재하지 않는다면 0을 입력하십시오.',
             'edit2_1':  '수정할 레이어의 번호를 선택하십시오:',
             'edit2_2':  '새 레이어 이름:',
             'edit2_3':  '변경할 모델:',
             'edit2_4':  '파라미터:',
+            'edit2_5':  '수정할 레이어가 없습니다.',
+            'edit3_1':  '삭제할 레이어의 번호를 선택해주십시오:',
+            'edit3_2':  '제거할 레이어가 없습니다.',
+            'edit3_3':  '인덱스가 범위를 벗어났습니다. 존재하는 레이어의 수 아래의 인덱스를 입력해주십시오.',
             'edit4_1':  '파라미터:',
             'loar1':    '모델 이름',
             'loar2':    '초기화 파라미터',
@@ -534,6 +574,7 @@ texts={ 'en':{
             'run3':     '5:設定           　　q:終了\n',
             'u1_1':     '修正するモデルを選んでください',
             'u1_2':     'モデルがありません。',
+            'u1_3':     'There is no model named : ',
             'edit0_1':  '作業を選んでください。\n\n',
             'edit0_2':  '1:レイヤー追加       2:レイヤー修正',
             'edit0_3':  '3:レイヤー削除       4:レイヤーのハイパーパラメータ修正\nq:出る\n',
@@ -541,10 +582,13 @@ texts={ 'en':{
             'edit1_2':  'レイヤーの名前:',
             'edit1_3':  '追加するモデル:',
             'edit1_4':  'パラメータ:',
+            'edit1_5':  'Index out of range. Please enter an index of less than or equal to the number of layers.',
+            'edit1_6':  'Enter 0 if there is no layer.',
             'edit2_1':  '修正するレイヤーの番号を選んでください:',
             'edit2_2':  '新しいレイヤーの名前:',
             'edit2_3':  '変更するモデル:',
             'edit2_4':  'パラメータ:',
+            'edit3_1':  'Index of the layer you want to delete:',
             'edit4_1':  'パラメータ:',
             'loar1':    'モデルの名前',
             'loar2':    '초기화 파라미터',
