@@ -227,6 +227,7 @@ class main_ui():
         self.loss=[]
         with open('option.json', 'r') as file:#옵션 로드
             self.options = json.load(file)
+        self.text=texts[self.options['language']]
 
         print('::: easy pytorch :::\n')
 
@@ -242,20 +243,22 @@ class main_ui():
     def run(self):
         #module list나 module dict를 직접 지원할 수 있도록 추후 업데이트 해야 할 것.
 
-        print('what do you want to do?\n')
-        print('1:edit architecture   2:new architecture\n3:edit training loop    4:new training loop\n5:option    Q:quit\n')
+        print(self.text['run0'])
+        print(self.text['run1'])
+        print(self.text['run2'])
+        print(self.text['run3'])
         user=input('user:')
         print('\n')
 
-        if user=='Q':#Done.
+        if user=='q':#Done.
             self.quit=True
             return 0
         
         if user=='1':
             
-            print(f'Choose model you want to edit:{self.control.class_idx.keys()}\n')
+            print(f'{self.text["u1_1"]}:{self.control.class_idx.keys()}\n')
             if len(self.control.class_idx)==0:
-                print('No custom architecture exists.')
+                print(self.text['u1_2'])
                 return 0
             
             tgtmodel=input('user:')
@@ -277,29 +280,30 @@ class main_ui():
         return 0
 
     def edit_architecture(self, tgtmodel):
-        print('What do you want to do?\n\n')
-        print('1:add layer       2:replace layer')
-        print('3:delete layer    4:edit hyper parameters\nq:quit\n')
+        print(self.text['edit0_1'])
+        print(self.text['edit0_2'])
+        print(self.text['edit0_3'])
         user=input('user:')
+        print('\n')
         if user=='q':
             self.quit=True
             return 0
         if user=='1':
-            idx=int(input('Index to add layer:'))
-            lname=input('Layer name:')
-            arc=input('Model:')
-            params=input('Parameters:')
+            idx=int(input(self.text['edit1_1']))
+            lname=input(self.text['edit1_2'])
+            arc=input(self.text['edit1_3'])
+            params=input(self.text['edit1_4'])
             self.control.add_layer(tgtmodel, lname, idx, arc, params)
             return 0
         if user=='2':
-            layer=int(input('Index of the layer you want to change:'))
-            newname=input('New layer name:')
-            arc=input('Model:')
-            params=input('Parameters:')
+            layer=int(input(self.text['edit2_1']))
+            newname=input(self.text['edit2_2'])
+            arc=input(self.text['edit2_3'])
+            params=input(self.text['edit2_4'])
             self.control.modify_layer(tgtmodel, layer, newname, arc, params)
             return 0
         if user=='4':
-            params=input('Parameters:')
+            params=input(self.text['edit4_1'])
             self.control.modify_init(tgtmodel, params)
         return 0
         
@@ -311,16 +315,17 @@ class main_ui():
         self.control.search()
         layername, arcname, params, initparam=self.control.load_architecture(tgtmodel)
         layerlen=len(layername)
-        print(f'\ninit params : {initparam}\n')
+        print(f'\n\n\t{self.text["loar1"]} : {tgtmodel}')
+        print(f'\n{self.text["loar2"]} : {initparam}\n')
         for i in range(layerlen):
             print(f'{layername[i]}({i}) : {arcname[i]} ({params[i]})')
         print('\n')
         return 0
 
     def load_model(self):#모델 인스턴스를 불러온다. 학습 혹은 테스트 위함.
-        print(f'version list:{self.db.code_dictionary.keys()}\n')
+        print(f'{self.text["lomo0_1"]}:{self.db.code_dictionary.keys()}\n')
         if len(self.db.code_dictionary)==0:
-            print('No version found.\n')
+            print(self.text["lomo0_2"])
             return 0
         user=int(input('user:'))
         print('\n')
@@ -342,7 +347,7 @@ class main_ui():
         return 0
 
     def make_new_arch(self):#Done. 새 아키텍처를 만든다.
-        print('enter the name of model you want to append.\n')
+        print(self.text['mna0'])
         user=input('user:')
         self.control.new_architecture(user)
 
@@ -389,40 +394,182 @@ class main_ui():
         print('Batch size: default (1)')
 
     def option_setting(self):#Done.
-        print(f"Option:\n\tdefault optimizer : {self.options['default_optim']}\n")
-        print(f"\tdefault activate function : {self.options['default_activ']}\n")
-        print(f"\tdefault learning rate : {self.options['default_lr']}\n")
-        print(f"\tdefault loss function : {self.options['default_loss']}\n")
-        print(f"\tdefault training epoch : {self.options['default_epoch']}\n")
-        print(f"\tauto save per epoch : {self.options['auto_save']}\n")
-        print(f"\tdefault batch size:{self.options['default_batch']}\n")
+        print(self.text['opt0'])
+        print(f"\t{self.text['opt1']} : {self.options['default_optim']}")
+        print(f"\t{self.text['opt2']} : {self.options['default_activ']}")
+        print(f"\t{self.text['opt3']} : {self.options['default_lr']}")
+        print(f"\t{self.text['opt4']} : {self.options['default_loss']}")
+        print(f"\t{self.text['opt5']} : {self.options['default_epoch']}")
+        print(f"\t{self.text['opt6']} : {self.options['auto_save']}")
+        print(f"\t{self.text['opt7']} : {self.options['default_batch']}")
+        print(f"\t{self.text['opt8']} : {self.options['language']}\n")
 
-        print('What component do you want to change?\n')
-        print('1:defaule optimizer    2:default activate function\n')
-        print('3:default learning rate    4:default loss function\n')
-        print('5:default training epoch    6:auto save per epoch(0:disabled)\n')
-        print('7:default batch size\n')
-        print('Q:quit\n\n')
+        print(self.text['opt9'])
+        print(self.text['opt10'])
+        print(self.text['opt11'])
+        print(self.text['opt12'])
+        print(self.text['opt13'])
+        print(self.text['opt14'])
 
         user=input('user:')
         if user=='1':
-            self.options['default_optim']=input('Default optim:')
+            self.options['default_optim']=input(self.text['opt1'])
         if user=='2':
-            self.options['default_activ']=input('Default activate function:')
+            self.options['default_activ']=input(self.text['opt2'])
         if user=='3':
-            self.options['default_lr']=input('Default learning rate:')
+            self.options['default_lr']=input(self.text['opt3'])
         if user=='4':
-            self.options['default_loss']=input('Default loss function:')
+            self.options['default_loss']=input(self.text['opt4'])
         if user=='5':
-            self.options['default_epoch']=input('Default training epoch:')
+            self.options['default_epoch']=input(self.text['opt5'])
         if user=='6':
-            self.options['auto_save']=input('Auto save per epoch:')
+            self.options['auto_save']=input(self.text['opt6'])
         if user=='7':
-            self.options['default_batch']=input('Default batch size:')
-        if user=='Q':
+            self.options['default_batch']=input(self.text['opt7'])
+        if user=='8':
+            print(self.text['opt15'])
+            print(self.text['opt16'])
+            print(self.text['opt17'])
+            print('\n')
+            self.options['language']=input(f"{self.text['opt8']}:")
+            self.text=texts[self.options['language']]
+            print('\n')
+        if user=='q':
             return 0
         with open('option.json', 'w') as file:#옵션 저장
             json.dump(self.options, file)
         return 0
+
+
+texts={ 'en':{
+            'run0':     'what do you want to do?\n',
+            'run1':     '1:edit architecture     2:new architecture',
+            'run2':     '3:edit training loop    4:new training loop',
+            'run3':     '5:option                q:quit\n',
+            'u1_1':     'Choose model you want to edit',
+            'u1_2':     'No custom architecture exists.',
+            'edit0_1':  'What do you want to do?\n\n',
+            'edit0_2':  '1:add layer       2:replace layer',
+            'edit0_3':  '3:delete layer    4:edit hyper parameters\nq:quit\n',
+            'edit1_1':  'Index to add layer:',
+            'edit1_2':  'Layer name:',
+            'edit1_3':  'Model:',
+            'edit1_4':  'Parameters:',
+            'edit2_1':  'Index of the layer you want to change:',
+            'edit2_2':  'New layer name:',
+            'edit2_3':  'Model:',
+            'edit2_4':  'Parameters:',
+            'edit4_1':  'Parameters:',
+            'loar1':    'Architecture name',
+            'loar2':    'init params',
+            'lomo0_1':  'version list',
+            'lomo0_2':  'No version found.\n',
+            'mna0':     'enter the name of model you want to append.\n',
+            'opt0':     'Option:\n',
+            'opt1':     'default optimizer',
+            'opt2':     'default activate function',
+            'opt3':     'default learning rate',
+            'opt4':     'default loss function',
+            'opt5':     'default training epoch',
+            'opt6':     'auto save per epoch',
+            'opt7':     'default batch size',
+            'opt8':     'language',
+            'opt9':     'What component do you want to change?\n',
+            'opt10':    '1:defaule optimizer         2:default activate function',
+            'opt11':    '3:default learning rate     4:default loss function',
+            'opt12':    '5:default training epoch    6:auto save per epoch(0:disabled)',
+            'opt13':    '7:default batch size        8:language',
+            'opt14':    'q:quit\n\n',
+            'opt15':    'available language:',
+            'opt16':    'en:english    kr:한국어',
+            'opt17':    'jp:日本語'
+},
+        'kr':{
+            'run0':     '무엇을 하고 싶으신가요?\n',
+            'run1':     '1:아키텍처 수정       2:새 아키텍처 작성',
+            'run2':     '3:학습 루프 수정      4:새 학습 루프 작성',
+            'run3':     '5:옵션 설정           q:종료\n',
+            'u1_1':     '수정할 모델을 선택하십시오',
+            'u1_2':     '기존에 작성한 모델이 없습니다.',
+            'edit0_1':  '무엇을 하고 싶으신가요?\n\n',
+            'edit0_2':  '1:레이어 추가       2:레이어 수정',
+            'edit0_3':  '3:레이어 삭제       4:레이어 하이퍼 파라미터 수정\nq:나가기\n',
+            'edit1_1':  '레이어를 추가할 위치:',
+            'edit1_2':  '레이어 이름:',
+            'edit1_3':  '추가할 모델:',
+            'edit1_4':  '파라미터:',
+            'edit2_1':  '수정할 레이어의 번호를 선택하십시오:',
+            'edit2_2':  '새 레이어 이름:',
+            'edit2_3':  '변경할 모델:',
+            'edit2_4':  '파라미터:',
+            'edit4_1':  '파라미터:',
+            'loar1':    '모델 이름',
+            'loar2':    '초기화 파라미터',
+            'lomo0_1':  '버전 목록',
+            'lomo0_2':  '버전을 찾을 수 없습니다.\n',
+            'mna0':     '추가할 모델의 이름을 입력하십시오.\n',
+            'opt0':     '설정:\n',
+            'opt1':     '기본 옵티마이저',
+            'opt2':     '기본 활성화 함수',
+            'opt3':     '기본 학습률',
+            'opt4':     '기본 손실함수',
+            'opt5':     '기본 학습 횟수',
+            'opt6':     '자동 저장 주기',
+            'opt7':     '기본 배치 크기',
+            'opt8':     '언어',
+            'opt9':     '수정할 사항을 선택하십시오.\n',
+            'opt10':    '1:기본 옵티마이저         2:기본 활성화 함수',
+            'opt11':    '3:기본 학습률     4:기본 손실 함수',
+            'opt12':    '5:기본 학습 횟수    6:자동 저장 주기(0:자동 저장 끄기)',
+            'opt13':    '7:기본 배치 크기        8:언어',
+            'opt14':    'q:나가기\n\n',
+            'opt15':    '사용 가능 언어:',
+            'opt16':    'en:english    kr:한국어',
+            'opt17':    'jp:日本語'
+    },
+    'jp':{
+            'run0':     '作業を選んでください。\n',
+            'run1':     '1:モデル修正         2:新しいモデル作成',
+            'run2':     '3:学習ループ修正      4:新しい学習ループ作成',
+            'run3':     '5:設定           　　q:終了\n',
+            'u1_1':     '修正するモデルを選んでください',
+            'u1_2':     'モデルがありません。',
+            'edit0_1':  '作業を選んでください。\n\n',
+            'edit0_2':  '1:レイヤー追加       2:レイヤー修正',
+            'edit0_3':  '3:レイヤー削除       4:レイヤーのハイパーパラメータ修正\nq:出る\n',
+            'edit1_1':  'レイヤーを追加する位置:',
+            'edit1_2':  'レイヤーの名前:',
+            'edit1_3':  '追加するモデル:',
+            'edit1_4':  'パラメータ:',
+            'edit2_1':  '修正するレイヤーの番号を選んでください:',
+            'edit2_2':  '新しいレイヤーの名前:',
+            'edit2_3':  '変更するモデル:',
+            'edit2_4':  'パラメータ:',
+            'edit4_1':  'パラメータ:',
+            'loar1':    'モデルの名前',
+            'loar2':    '초기화 파라미터',
+            'lomo0_1':  'ヴァージョンリスト',
+            'lomo0_2':  'ヴァージョンがあるません。\n',
+            'mna0':     '追加するモデルの名前を書いてください。\n',
+            'opt0':     '設定:\n',
+            'opt1':     '기본 옵티마이저',
+            'opt2':     '기본 활성화 함수',
+            'opt3':     '기본 학습률',
+            'opt4':     '기본 손실함수',
+            'opt5':     '기본 학습 횟수',
+            'opt6':     '자동 저장 주기',
+            'opt7':     '기본 배치 크기',
+            'opt8':     '언어',
+            'opt9':     '수정할 사항을 선택하십시오.\n',
+            'opt10':    '1:기본 옵티마이저         2:기본 활성화 함수',
+            'opt11':    '3:기본 학습률     4:기본 손실 함수',
+            'opt12':    '5:기본 학습 횟수    6:자동 저장 주기(0:자동 저장 끄기)',
+            'opt13':    '7:기본 배치 크기        8:언어',
+            'opt14':    'q:出る\n\n',
+            'opt15':    '사용 가능 언어:',
+            'opt16':    'en:english    kr:한국어',
+            'opt17':    'jp:日本語'
+    }
+    }
 
 main=main_ui()
