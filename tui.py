@@ -2,6 +2,7 @@ import torch.nn as nn
 import torch
 import json
 import importlib
+import re
 import model_architectures#사용자가 제작한 모델들의 실제 class가 저장된 곳
 importlib.reload(model_architectures)
 '''
@@ -71,12 +72,13 @@ class Architecture_Database():#아키텍처별로 코드 따로 저장하게 나
             self.code_dictionary = json.load(file)
         with open('architectures.json', 'r') as file:
             self.architecture_dictionary = json.load(file)
-        with open('model_architectures.py', 'r') as file:#모델 코드 저장
-            file.read(self.module)
+        with open('model_architectures.py', 'r') as file:#모델 코드 로드
+            self.module=file.read()
         return 0
 
     def load_mod(self, code):#Done. code:로드할 가중치 파일 명
         #instance 로드.
+        #후에 가중치를 레이어별로 불러올 수 있도록 해야 할 것.
 
         self.modelcode=self.code_dictionary[code]#가중치 파일 여부 확인
         if self.modelcode==False:
@@ -89,35 +91,31 @@ class Architecture_Database():#아키텍처별로 코드 따로 저장하게 나
     def load_arc(self, modelname, params):#modelcode:불러들일 가중치 이름, modelname:불러들일 모델 이름
         loader=globals()[modelname]
         #self.params=input(f"model parameters({paramcaption}):")
-        model=loader(params)
+        model=loader(params)#모델에 디폴트 설정할 수 있게 할 것.
         return model
-
-'''    def load_architecture(self, layers, forward_func):
-        #아키텍처를 바탕으로 모델 instance 반환.
-        layerlen=len(layers)
-        model=nn.ModuleList([])
-        for i in range(layerlen):
-            try:
-                instant_module = globals()[f"nn.{layers[i][0]}"]
-                model.append(instant_module(layers[i][1]))
-            except KeyError:
-                instant_module=self.load_architecture(self.architecture_dictionary[layers[i][0]])
-                if instant_module==False:
-                    print(f"No Module or Architecture named \'{layers[i]}\'")
-                    return 14
-        return model
-    def load_architecture(self, name, param):
-        #이름을 바탕으로 instance 반환
-        instant=globals()[name]
-        model=instant(param)
-        return model'''
 
 class model_control():
     def __init__(self, code):
         self.modelcode=code
         self.lines=self.modelcode.split('\n')
-        return self
+        self.class_idx=[]
+        self.start_class={}
+        self.class_pattern = r'class\s+(\w)\((\w)\):'
     
+    def search_class(self):
+        #일단 class A(b)를 검색하여 인덱스를 얻고
+        #해당 인덱스에서 클래스 이름을 얻고
+        #얻은 클래스 이름을 바탕으로 각 클래스별 시작 지점을 찾는다.
+
+        #이후 __init__ 내부에서 self.{name}=nn.{name}이나 custom.{name}을 통해 내부 구조를 정리한다.
+        #forward 함수에서는 텐서와 레이어 단위를 기본적으로 적용하며
+        #추후 custom function을 지원하여야 할 것.
+        match = re.match(self.class_pattern, self.lines[self.class_idx])
+        if match:
+            class_name = match.group(1)  # A 추출
+            base_class = match.group(2)  # B 추출
+        #self.start_class[class_name]=
+
     def new_architecture(self, name):
         self.lines.append(f"\nclass {name}(nn.Module):\n")
         self.lines.append('\tdef __init__(self):\n')
@@ -138,24 +136,26 @@ class model_control():
         #********그리고 텐서 각 모델이 어느 딕셔너리에서 어느 딕셔너리로 갈지를 지정해서 forward 함수를 쉽게 구성할 수 있다!
         return 0
 
-
-
 class main_ui():
     def __init__(self):
         super(main_ui, self).__init__()
         self.models=nn.ModuleDict([])#로드한 모델 목록
         self.db=Architecture_Database()#load database
+        self.control=model_control(self.db.module)
         self.visualize=False#Default
         self.cuda=torch.cuda.is_available()#Default
         self.quit=False
-        self.control=model_control()
         self.default_optim='Adam'
         self.default_lr=0.0001
         self.default_loss='MSEloss'
+        self.default_activ='ReLU'
+        self.optims=[]
+        self.loss_fn=[]#로스도 만들수 있게 해야 할 것.
+        self.loss=[]
 
         print('::: easy pytorch :::\n')
 
-        while self.quit:
+        while not self.quit:
             self.run()
 
     def run(self):
@@ -164,46 +164,65 @@ class main_ui():
 
         print('what do you want to do?\n')
         print('1:load model   2:new architecture    3:option   Q:quit\n')
-        user=int(input())
+        user=input('user:')
         print('\n')
 
         if user=='Q':
             self.quit=True
             return 0
         
-        if user==1:
-            print(f'custom model list:{self.db.code_dictionary}\n')
-            user=int(input())
+        if user=='1':
+            print(f'custom model list:{self.db.architecture_dictionary.keys()}\n')
+            if len(self.db.architecture_dictionary)==0:
+                print('No custom model found.\n')
+                return 0
+            user=int(input('user:'))
             print('\n')
             print('What do you want to do with this model?\n1:edit the model    2:train the model\n')
-            user=int(input())
+            user=int(input('user:'))
             print('\n')
-            if user==1:
+            if user=='1':
                 #모델 수정. while 문으로 돌리기. 끝나면 save할지 물어보기.
                 return 0 ##################################################
-            if user==2:#학습시작.
+            if user=='2':#학습시작.
+                self.train_option_setting()
                 self.training()
                 self.save()
             return 0
 
-        if user==2:
+        if user=='2':
             print('::: append models :::\n')
             print('enter the name of model you want to append.\n')
             print('enter 0 when you\'ve done.\n')
-            while True:
-                layername=input('Layer name:')
-                if layername==0:
+            while user != '0':
+                user=input('Layer name:')
+                if user=='0':
                     break
-                user=input('Model name:')
-                if user==0:
-                    break
-                self.models[layername]=self.new_model(user)
+                modelname=input('Model name:')
+                params=input('Parameters(0:Default):')
+                self.models[user]=self.new_model(modelname, params)
 
-
-        if user==3:
-            self.option()
+        if user=='3':
+            self.option_setting()
             return 0
 
+    def train_option_setting(self):
+        print('What do you want to do?:\n1:Add optimizer    2:Add loss function\n')
+        user=input()
+        if user==1:
+            print(f'What optimizer do you want to add?\n*0:default({self.default_optim})')
+            optname=input()
+            if optname==0:
+                optname=self.default_optim
+            
+            print(f'What parameters do you want to enter in this optimizer?')
+        loader=globals()[self.optimname]
+        print('What parameters do you want to enter in this optimizer?')
+        self.optims.append(loader(self.tgtmodel.parameters, lr=self.default_lr))
+
+    def train_loop_setting(self):
+        return 0
+    
     def training(self):
         return 0
 
@@ -214,6 +233,19 @@ class main_ui():
         epoch=input('train epoch:')
         print('Batch size: default (1)')
 
-    def option(self):
-        print("Setting:\n\tdefault optimizer : optim\n\tdefault activate function : activ\n\t")
-        self.default_optim=input()
+    def option_setting(self):
+        print(f"Option:\n\tdefault optimizer : {self.default_optim}\n\tdefault activate function : {self.default_activ}\n\tdefault learning rate : {self.default_lr}\n\tdefault loss function : {self.default_loss}\n")
+        user=input('What component do you want to change?\n1:defaule optimizer    2:default activate function\n3:default learning rate    4:default loss function\n5:default training epoch    6:default sacing term\n0:quit\n\nuser:')
+        if user==1:
+            self.default_optim=input('Default optim:')
+        if user==2:
+            self.default_activ=input('Default activate function:')
+        if user==3:
+            self.default_lr=input('Default learning rate:')
+        if user==4:
+            self.default_loss=input('Default loss function')
+        if user==0:
+            return 0
+        return 0
+
+main=main_ui()
