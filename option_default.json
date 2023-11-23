@@ -1,0 +1,1 @@
+{"default_optim": "Adam", "default_lr": 0.0001, "default_loss": "MSELoss", "default_activ": "ReLU", "default_epoch": "100", "auto_save": 50, "default_batch": 1, "language": "en"}
